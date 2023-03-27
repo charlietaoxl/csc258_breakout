@@ -39,10 +39,31 @@ main:
     jal paint_left_wall
     jal reset_to_right
     jal paint_right_wall
-    jal reset_to_brick
-    jal paint_brick
-    jal exit
     
+    add $t7, $t1, $zero # set t6 to be red for the paint_brick_row
+    lw $t0, ADDR_DSPL # reset display address
+    addi $t0, $t0, 256
+    addi $t0, $t0, 16 # set starting point
+    li $t5, 0 
+    li $t6, 5
+    jal paint_brick_row
+    
+    add $t7, $t2, $zero # set t6 to be green for the paint_brick_row
+    lw $t0, ADDR_DSPL # reset display address
+    addi $t0, $t0, 512
+    addi $t0, $t0, 16 # set starting point
+    li $t5, 0 
+    li $t6, 5
+    jal paint_brick_row
+    
+    add $t7, $t3, $zero # set t6 to be blue for the paint_brick_row
+    lw $t0, ADDR_DSPL # reset display address
+    addi $t0, $t0, 768
+    addi $t0, $t0, 16 # set starting point
+    li $t5, 0 
+    li $t6, 5
+    jal paint_brick_row
+    jal exit
 
 return: 
     jr $ra
@@ -56,7 +77,7 @@ paint_top_wall:
 
 reset_to_left:
     li $t5, 0 
-    li $t6, 28
+    li $t6, 31
 
 paint_left_wall:
     # li $v0, 32
@@ -72,7 +93,7 @@ paint_left_wall:
 reset_to_right:
     lw $t0, ADDR_DSPL
     li $t5, 0 
-    li $t6, 29
+    li $t6, 32
     addi $t0, $t0, 124
 
 paint_right_wall:
@@ -80,36 +101,39 @@ paint_right_wall:
     # li $a0, 1000
     # syscall               # Sleep for 1 second
     beq $t5, $t6, return
-    sw $t4, 0($t0)          # Colour the pixel at $t0 with $t4
+    sw $t4, 0($t0)
     addi $t0, $t0, 128
     addi $t5, $t5, 1
     j paint_right_wall
-    
-reset_to_brick:
-    lw $t0, ADDR_DSPL       
-    addi $t0, $t0, 0x180      # First non-wall empty space
-    addi $t0, $t0, 4
-    li $t5, 0
-    li $t6, 4               # Length of brick
 
-paint_brick:
-    beq $t5, $t6, return
-    li $t4, 0xff0000
-    sw $t4, 0($t0)
-    addi $t0, $t0, 4        # Moves 4 bytes (to the next pixel)
-    addi $t5, $t5, 1
-    j paint_brick
-    
 paint_brick_row:
+    beq $t5, $t6, return
     addi $sp, $sp, -4       # Allocating 4 bytes into stack
     sw $ra, 0($sp)
     
-    
+    # Code here
+    jal paint_brick
+    addi $t0, $t0, 4
     
     lw $ra, 0($sp)
     addi $sp, $sp, 4
-    j return                # Returns to $ra
+    addi $t5, $t5, 1
+    j paint_brick_row
     
+    
+paint_brick:
+    # t7 is set to a color set in main 
+    sw $t7, 0($t0)
+    addi $t0, $t0, 4
+    sw $t7, 0($t0)
+    addi $t0, $t0, 4 
+    sw $t7, 0($t0)
+    addi $t0, $t0, 4 
+    sw $t7, 0($t0)
+    addi $t0, $t0, 4 
+    
+    jr $ra
+
 exit:
     li $v0, 10              # terminate the program gracefully
     syscall
