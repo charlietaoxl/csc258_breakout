@@ -63,6 +63,14 @@ main:
     li $t5, 0 
     li $t6, 5
     jal paint_brick_row
+    
+    li $t7, 0xffffff # set t6 to be white for the paint_paddle
+    lw $t0, ADDR_DSPL # reset display address
+    addi $t0, $t0, 3712
+    addi $t0, $t0, 16 # set starting point
+    jal paint_brick
+    
+    jal paint_ball
     jal exit
 
 return: 
@@ -102,7 +110,8 @@ paint_right_wall:
     # syscall               # Sleep for 1 second
     beq $t5, $t6, return
     sw $t4, 0($t0)
-    addi $t0, $t0, 128
+    
+    # Code here
     addi $t5, $t5, 1
     j paint_right_wall
 
@@ -111,7 +120,6 @@ paint_brick_row:
     addi $sp, $sp, -4       # Allocating 4 bytes into stack
     sw $ra, 0($sp)
     
-    # Code here
     jal paint_brick
     addi $t0, $t0, 4
     
@@ -131,6 +139,27 @@ paint_brick:
     addi $t0, $t0, 4 
     sw $t7, 0($t0)
     addi $t0, $t0, 4 
+    
+    jr $ra
+    
+paint_paddle:
+    sw $t7, 0($t0)
+    addi $t0, $t0, 4
+    sw $t7, 0($t0)
+    addi $t0, $t0, 4
+    sw $t7, 0($t0)
+    addi $t0, $t0, 4
+    sw $t7, 0($t0)
+    addi $t0, $t0, 4
+    
+    jr $ra
+    
+paint_ball:
+    lw $t0, ADDR_DSPL
+    addi $t0, $t0, 0x3f00
+    addi $t0, $t0, 64  
+    li $t4, 0x000000
+    sw $t4, 0($t0)
     
     jr $ra
 
