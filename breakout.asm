@@ -21,6 +21,14 @@ ADDR_DSPL:
 # The address of the keyboard. Don't forget to connect it!
 ADDR_KBRD:
     .word 0xffff0000
+    
+# Standard Colours
+RED:
+    .word 0xff0000
+BLUE:
+    .word 0x00ff00
+GREEN:
+    .word 0x0000ff
 
 ##############################################################################
 # Mutable Data
@@ -34,9 +42,9 @@ ADDR_KBRD:
 
 	# Run the Brick Breaker game.
 main:
-    li $t1, 0xff0000        # $t1 = red
-    li $t2, 0x00ff00        # $t2 = green
-    li $t3, 0x0000ff        # $t3 = blue
+    lw $t1, RED        # $t1 = red
+    lw $t2, BLUE        # $t2 = green
+    lw $t3, GREEN        # $t3 = blue
     li $t4, 0x888888        # $t4 = grey
     li $t5, 0x00000000 # counter for functions
     li $t6, 0x00000020 # stores 32
