@@ -52,6 +52,14 @@ main:
     lw $t0, ADDR_DSPL       # $t0 = base address for display
     
     # Initialize the game
+    jal draw_screen
+    
+    j game_loop
+    
+draw_screen:
+    addi $sp, $sp, -4       # Allocating 4 bytes into stack
+    sw $ra, 0($sp)
+    
     jal paint_top_wall
     jal reset_to_left
     jal paint_left_wall
@@ -93,8 +101,10 @@ main:
     addi $t0, $t0, 3712
     add $t0, $t0, $t1 # set starting point
     jal paint_ball
-
-    jal exit
+    
+    # Reset $ra
+    lw $ra, 0($sp)
+    addi $sp, $sp, 4
     
 #########
 # Helper labels/functions
