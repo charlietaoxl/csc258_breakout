@@ -142,7 +142,7 @@ respond_to_a:
     beq $t2, 4, hit_left_max
     jr $ra
 hit_left_max:
-    lw $t2, 4
+    li $t2, 4
     jr $ra
 
 respond_to_d:
@@ -150,7 +150,7 @@ respond_to_d:
     beq $t2, 104, hit_right_max
     jr $ra
 hit_right_max:
-    lw $t2, 104
+    li $t2, 104
     jr $ra
 
 return: 
