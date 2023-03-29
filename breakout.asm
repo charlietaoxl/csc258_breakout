@@ -25,9 +25,9 @@ ADDR_KBRD:
 # Standard Colours
 RED:
     .word 0xff0000
-BLUE:
-    .word 0x00ff00
 GREEN:
+    .word 0x00ff00
+BLUE:
     .word 0x0000ff
 
 ##############################################################################
@@ -42,9 +42,10 @@ GREEN:
 
 	# Run the Brick Breaker game.
 main:
-    lw $t1, RED        # $t1 = red
-    lw $t2, BLUE        # $t2 = green
-    lw $t3, GREEN        # $t3 = blue
+    
+    li $t1, 64        # $t1 = ball position
+    li $t2, 56        # $t2 = paddle position
+    lw $t3, BLUE        # $t3 = blue
     li $t4, 0x888888        # $t4 = grey
     li $t5, 0x00000000 # counter for functions
     li $t6, 0x00000020 # stores 32
@@ -57,7 +58,7 @@ main:
     jal reset_to_right
     jal paint_right_wall
     
-    lw $t7, GREEN # set t7 to be red for the paint_brick_row
+    lw $t7, RED # set t7 to be red for the paint_brick_row
     lw $t0, ADDR_DSPL # reset display address
     addi $t0, $t0, 256
     addi $t0, $t0, 16 # set starting point
@@ -65,7 +66,7 @@ main:
     li $t6, 5
     jal paint_brick_row
     
-    lw $t7, RED # set t7 to be green for the paint_brick_row
+    lw $t7, GREEN # set t7 to be green for the paint_brick_row
     lw $t0, ADDR_DSPL # reset display address
     addi $t0, $t0, 512
     addi $t0, $t0, 16 # set starting point
@@ -73,7 +74,7 @@ main:
     li $t6, 5
     jal paint_brick_row
     
-    add $t7, $t3, $zero # set t7 to be blue for the paint_brick_row
+    lw $t7, BLUE # set t7 to be blue for the paint_brick_row
     lw $t0, ADDR_DSPL # reset display address
     addi $t0, $t0, 768
     addi $t0, $t0, 16 # set starting point
@@ -84,13 +85,13 @@ main:
     li $t7, 0xfa19bc # set t7 to be  for the paint_paddle
     lw $t0, ADDR_DSPL # reset display address
     addi $t0, $t0, 3840
-    add $t0, $t0, 56 # set starting point
+    add $t0, $t0, $t2 # set starting point
     jal paint_paddle
     
     li $t7, 0xffffff # set t7 to be white for the paint_ball
     lw $t0, ADDR_DSPL # reset display address
     addi $t0, $t0, 3712
-    addi $t0, $t0, 64 # set starting point
+    add $t0, $t0, $t1 # set starting point
     jal paint_ball
 
     jal exit
@@ -117,6 +118,7 @@ game_loop:
     # 2a. Check for collisions
 	# 2b. Update locations (paddle, ball)
 	# 3. Draw the screen
+	jal main
 	# 4. Sleep
     # 5. Go back to 1
     b game_loop
@@ -136,10 +138,20 @@ keyboard_input:
     jr $ra
     
 respond_to_a:
-    
+    sub $t2, $t2, 4
+    beq $t2, 4, hit_left_max
+    jr $ra
+hit_left_max:
+    lw $t2, 4
+    jr $ra
 
 respond_to_d:
-    
+    add $t2, $t2, 4
+    beq $t2, 104, hit_right_max
+    jr $ra
+hit_right_max:
+    lw $t2, 104
+    jr $ra
 
 return: 
     jr $ra
