@@ -105,12 +105,42 @@ game_loop:
 	# 2b. Update locations (paddle, ball)
 	# 3. Draw the screen
 	# 4. Sleep
-
-    #5. Go back to 1
+    # 5. Go back to 1
+    
+    # 1a. Check if key has been pressed
+    lw $t0, ADDR_KBRD               # $t0 = base address for keyboard
+    lw $t8, 0($t0)                  # Load first word from keyboard
+    beq $t8, 1, keyboard_input      # If first word 1, key is pressed
+    
+    # 1b. Check which key has been pressed
+    jal keyboard_input
+    # 2a. Check for collisions
+	# 2b. Update locations (paddle, ball)
+	# 3. Draw the screen
+	# 4. Sleep
+    # 5. Go back to 1
     b game_loop
-
+    
 # 
     
+keyboard_input:
+    addi $sp, $sp, -4       # Allocating 4 bytes into stack
+    sw $ra, 0($sp)
+
+    lw $a0, 4($t0)    # Load second word from keyboard
+    beq $a0, 0x61, respond_to_a    # Check if the key a was pressed (move paddle left)
+    beq $a0, 0x64, respond_to_d    # Check if the key d was pressed (move paddle right)
+    # li $v0, 1                       # ask system to print $a0
+    # syscall
+    
+    jr $ra
+    
+respond_to_a:
+    
+
+respond_to_d:
+    
+
 return: 
     jr $ra
     
