@@ -2,7 +2,7 @@
 # This file contains our implementation of Breakout.
 #
 # Student 1: Name, Student Number
-# Student 2: Name, Student Number
+# Student 2: Charlie Tao, 1008251589
 ######################## Bitmap Display Configuration ########################
 # - Unit width in pixels:       1
 # - Unit height in pixels:      1
@@ -52,8 +52,9 @@ main:
     
     # Initialize the game
     jal draw_screen
+    jal game_loop
     
-    j game_loop
+    j exit
     
 draw_screen:
     addi $sp, $sp, -4       # Allocating 4 bytes into stack
@@ -122,14 +123,13 @@ game_loop:
     lw $t3, ADDR_KBRD               # $t3 = base address for keyboard
     lw $t8, 0($t3)                  # Load first word from keyboard
     beq $t8, 1, keyboard_input      # If first word 1, key is pressed
-    
     # 1b. Check which key has been pressed
-    jal keyboard_input
     # 2a. Check for collisions
 	# 2b. Update locations (paddle, ball)
 	# 3. Draw the screen
 	jal draw_screen
 	# 4. Sleep
+	
     # 5. Go back to 1
     b game_loop
     
@@ -177,8 +177,9 @@ paint_top_wall:
     j paint_top_wall
 
 reset_to_left:
+    lw $t0, ADDR_DSPL
     li $t5, 0 
-    li $t6, 31
+    li $t6, 32
 
 paint_left_wall:
     beq $t5, $t6, return
