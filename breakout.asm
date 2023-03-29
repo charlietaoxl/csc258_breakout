@@ -42,14 +42,13 @@ BLUE:
 
 	# Run the Brick Breaker game.
 main:
-    
+    lw $t0, ADDR_DSPL       # $t0 = base address for display
     li $t1, 64        # $t1 = ball position
     li $t2, 56        # $t2 = paddle position
-    lw $t3, BLUE        # $t3 = blue
+    lw $t3, ADDR_KBRD        # $t3 = base address for keyboard
     li $t4, 0x888888        # $t4 = grey
     li $t5, 0x00000000 # counter for functions
     li $t6, 0x00000020 # stores 32
-    lw $t0, ADDR_DSPL       # $t0 = base address for display
     
     # Initialize the game
     jal draw_screen
@@ -105,6 +104,7 @@ draw_screen:
     # Reset $ra
     lw $ra, 0($sp)
     addi $sp, $sp, 4
+    jr $ra
     
 #########
 # Helper labels/functions
@@ -119,8 +119,8 @@ game_loop:
     # 5. Go back to 1
     
     # 1a. Check if key has been pressed
-    lw $t0, ADDR_KBRD               # $t0 = base address for keyboard
-    lw $t8, 0($t0)                  # Load first word from keyboard
+    lw $t3, ADDR_KBRD               # $t3 = base address for keyboard
+    lw $t8, 0($t3)                  # Load first word from keyboard
     beq $t8, 1, keyboard_input      # If first word 1, key is pressed
     
     # 1b. Check which key has been pressed
@@ -128,7 +128,7 @@ game_loop:
     # 2a. Check for collisions
 	# 2b. Update locations (paddle, ball)
 	# 3. Draw the screen
-	jal main
+	jal draw_screen
 	# 4. Sleep
     # 5. Go back to 1
     b game_loop
@@ -139,11 +139,14 @@ keyboard_input:
     addi $sp, $sp, -4       # Allocating 4 bytes into stack
     sw $ra, 0($sp)
 
-    lw $a0, 4($t0)    # Load second word from keyboard
+    lw $a0, 4($t3)    # Load second word from keyboard
     beq $a0, 0x61, respond_to_a    # Check if the key a was pressed (move paddle left)
     beq $a0, 0x64, respond_to_d    # Check if the key d was pressed (move paddle right)
     # li $v0, 1                       # ask system to print $a0
     # syscall
+    
+    lw $ra, 0($sp)
+    addi $sp, $sp, 4
     
     jr $ra
     
