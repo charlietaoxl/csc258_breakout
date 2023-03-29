@@ -29,6 +29,14 @@ GREEN:
     .word 0x00ff00
 BLUE:
     .word 0x0000ff
+WHITE:
+    .word 0xffffff
+BLACK:
+    .word 0x000000
+GRAY:
+    .word 0x888888
+PADDLE_COLOUR:
+    .word 0xfa19bc
 
 ##############################################################################
 # Mutable Data
@@ -42,13 +50,16 @@ BLUE:
 
 	# Run the Brick Breaker game.
 main:
-    lw $t0, ADDR_DSPL       # $t0 = base address for display
-    li $t1, 64        # $t1 = ball position
-    li $t2, 56        # $t2 = paddle position
-    lw $t3, ADDR_KBRD        # $t3 = base address for keyboard
-    li $t4, 0x888888        # $t4 = grey
+    lw $t0, ADDR_DSPL  # $t0 = base address for display
+    add $t1, $t0, 3776         # $t1 = ball position
+    add $t2, $t0, 3896         # $t2 = paddle position
+    lw $t3, ADDR_KBRD  # $t3 = base address for keyboard
+    add $t4, $t2, -4 # $t4 = PIXEL ADDRESS TO DELETE
     li $t5, 0x00000000 # counter for functions
-    li $t6, 0x00000020 # stores 32
+    li $t6, 0x00000020 # end of counter
+    lw $t7, GRAY       # NOT IN USE
+    li $t8, 0x00000000 # keyboard input saver
+    li $t9, 0 # NOT IN USE
     
     # Initialize the game
     jal draw_screen
@@ -57,54 +68,21 @@ main:
     j exit
     
 draw_screen:
-    addi $sp, $sp, -4       # Allocating 4 bytes into stack
+    addi $sp, $sp, -4
     sw $ra, 0($sp)
     
-    jal paint_top_wall
+    jal reset_to_top
+    jal paint_hline
     jal reset_to_left
-    jal paint_left_wall
+    jal paint_vline
     jal reset_to_right
-    jal paint_right_wall
-    
-    lw $t7, RED # set t7 to be red for the paint_brick_row
-    lw $t0, ADDR_DSPL # reset display address
-    addi $t0, $t0, 256
-    addi $t0, $t0, 16 # set starting point
-    li $t5, 0 
-    li $t6, 5
-    jal paint_brick_row
-    
-    lw $t7, GREEN # set t7 to be green for the paint_brick_row
-    lw $t0, ADDR_DSPL # reset display address
-    addi $t0, $t0, 512
-    addi $t0, $t0, 16 # set starting point
-    li $t5, 0 
-    li $t6, 5
-    jal paint_brick_row
-    
-    lw $t7, BLUE # set t7 to be blue for the paint_brick_row
-    lw $t0, ADDR_DSPL # reset display address
-    addi $t0, $t0, 768
-    addi $t0, $t0, 16 # set starting point
-    li $t5, 0 
-    li $t6, 5
-    jal paint_brick_row
-    
-    li $t7, 0xfa19bc # set t7 to be  for the paint_paddle
-    lw $t0, ADDR_DSPL # reset display address
-    addi $t0, $t0, 3840
-    add $t0, $t0, $t2 # set starting point
+    jal paint_vline
+    jal reset_paddle
     jal paint_paddle
-    
-    li $t7, 0xffffff # set t7 to be white for the paint_ball
-    lw $t0, ADDR_DSPL # reset display address
-    addi $t0, $t0, 3712
-    add $t0, $t0, $t1 # set starting point
     jal paint_ball
-    
-    # Reset $ra
+
     lw $ra, 0($sp)
-    addi $sp, $sp, 4
+    addi $sp, $sp, 4 
     jr $ra
     
 #########
@@ -149,104 +127,103 @@ keyboard_input:
     addi $sp, $sp, 4
     
     jr $ra
-    
 respond_to_a:
-    sub $t2, $t2, 4
-    beq $t2, 4, hit_left_max
+    lw $t0, ADDR_DSPL
+    addi $t0, $t0, 3844
+    beq $t2, $t0, return
+    add $t4, $t2, 16
+    addi $t2, $t2, -4
     jr $ra
-hit_left_max:
-    li $t2, 4
-    jr $ra
-
 respond_to_d:
-    add $t2, $t2, 4
-    beq $t2, 104, hit_right_max
+    lw $t0, ADDR_DSPL
+    addi $t0, $t0, 3944
+    beq $t2, $t0, return
+    add $t4, $t2, $zero
+    addi $t2, $t2, 4
     jr $ra
-hit_right_max:
-    li $t2, 104
+reset_to_top:
+    lw $t0, ADDR_DSPL
+    li $t5, 0
+    li $t6, 32 # Length of top
+    lw $t7, GRAY
     jr $ra
-
-return: 
-    jr $ra
-    
-paint_top_wall:
-    beq $t5, $t6, return
-    sw $t4, 0($t0)          # paint the first unit (i.e., top-left) red
-    addi $t0, $t0, 4
-    addi $t5, $t5, 1
-    j paint_top_wall
-
 reset_to_left:
     lw $t0, ADDR_DSPL
-    li $t5, 0 
-    li $t6, 32
-
-paint_left_wall:
-    beq $t5, $t6, return
-    li $t4, 0x888888
-    sw $t4, 0($t0)
-    addi $t0, $t0, 128
-    addi $t5, $t5, 1
-    j paint_left_wall
-    
+    li $t5, 0
+    li $t6, 30 # Length of left
+    lw $t7, GRAY
+    jr $ra
 reset_to_right:
     lw $t0, ADDR_DSPL
-    li $t5, 0 
-    li $t6, 32
     addi $t0, $t0, 124
-
-paint_right_wall:
+    li $t5, 0
+    li $t6, 30 # Length of right
+    lw $t7, GRAY
+    jr $ra
+reset_paddle:
+    lw $t7, BLACK
+    sw $t7, 0($t4)
+    li $t5, 0
+    li $t6, 5
+    add $t0, $t2, $zero
+    lw $t7, PADDLE_COLOUR 
+    
+    jr $ra
+    
+paint_hline: # Paints horizontal line with $t6 pixels at $t0
     beq $t5, $t6, return
-    sw $t4, 0($t0)
+    sw $t7, 0($t0)
+    addi $t0, $t0, 4
+    addi $t5, $t5, 1
+    j paint_hline
+
+paint_vline: # Paints vertical line with $t6 pixels at $t0
+    beq $t5, $t6, return
+    sw $t7, 0($t0)
     addi $t0, $t0, 128
     addi $t5, $t5, 1
-    j paint_right_wall
-
-paint_brick_row:
-    beq $t5, $t6, return
-    addi $sp, $sp, -4       # Allocating 4 bytes into stack
+    j paint_vline
+    
+paint_brick_row:  # NOT YET COMPLETED
+    addi $sp, $sp, -4
     sw $ra, 0($sp)
     
+    beq $t5, $t6, paint_brick_row
     jal paint_brick
-    addi $t0, $t0, 4
     
     lw $ra, 0($sp)
     addi $sp, $sp, 4
-    addi $t5, $t5, 1
     j paint_brick_row
+
+paint_brick: # Paints 4 pixel brick at $t0 
+    addi $sp, $sp, -4
+    sw $ra, 0($sp)
     
+    li $t5, 0
+    li $t6, 4
+    jal paint_hline
     
-paint_brick:
-    # t7 is set to a color set in main 
-    sw $t7, 0($t0)
-    addi $t0, $t0, 4
-    sw $t7, 0($t0)
-    addi $t0, $t0, 4 
-    sw $t7, 0($t0)
-    addi $t0, $t0, 4 
-    sw $t7, 0($t0)
-    addi $t0, $t0, 4 
-    
+    lw $ra, 0($sp)
+    addi $sp, $sp, 4
     jr $ra
     
 paint_paddle:
-    sw $t7, 0($t0)
-    addi $t0, $t0, 4
-    sw $t7, 0($t0)
-    addi $t0, $t0, 4
-    sw $t7, 0($t0)
-    addi $t0, $t0, 4
-    sw $t7, 0($t0)
-    addi $t0, $t0, 4
-    sw $t7, 0($t0)
-    addi $t0, $t0, 4
+    addi $sp, $sp, -4
+    sw $ra, 0($sp)
     
-    jr $ra
+    jal paint_hline
     
-paint_ball:
-    sw $t7, 0($t0)
+    lw $ra, 0($sp)
+    addi $sp, $sp, 4
     jr $ra
 
+paint_ball:
+    lw $t7, WHITE
+    sw $t7, 0($t1)
+    jr $ra
+
+return:
+    jr $ra
 exit:
     li $v0, 10              # terminate the program gracefully
     syscall
