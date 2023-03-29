@@ -57,7 +57,7 @@ main:
     jal reset_to_right
     jal paint_right_wall
     
-    add $t7, $t1, $zero # set t7 to be red for the paint_brick_row
+    lw $t7, GREEN # set t7 to be red for the paint_brick_row
     lw $t0, ADDR_DSPL # reset display address
     addi $t0, $t0, 256
     addi $t0, $t0, 16 # set starting point
@@ -65,7 +65,7 @@ main:
     li $t6, 5
     jal paint_brick_row
     
-    add $t7, $t2, $zero # set t7 to be green for the paint_brick_row
+    lw $t7, RED # set t7 to be green for the paint_brick_row
     lw $t0, ADDR_DSPL # reset display address
     addi $t0, $t0, 512
     addi $t0, $t0, 16 # set starting point
@@ -84,7 +84,7 @@ main:
     li $t7, 0xfa19bc # set t7 to be  for the paint_paddle
     lw $t0, ADDR_DSPL # reset display address
     addi $t0, $t0, 3840
-    addi $t0, $t0, 56 # set starting point
+    add $t0, $t0, 56 # set starting point
     jal paint_paddle
     
     li $t7, 0xffffff # set t7 to be white for the paint_ball
@@ -156,9 +156,6 @@ reset_to_left:
     li $t6, 31
 
 paint_left_wall:
-    # li $v0, 32
-    # li $a0, 1000
-    # syscall               # Sleep for 1 second
     beq $t5, $t6, return
     li $t4, 0x888888
     sw $t4, 0($t0)
@@ -173,9 +170,6 @@ reset_to_right:
     addi $t0, $t0, 124
 
 paint_right_wall:
-    # li $v0, 32
-    # li $a0, 1000
-    # syscall               # Sleep for 1 second
     beq $t5, $t6, return
     sw $t4, 0($t0)
     addi $t0, $t0, 128
