@@ -4,10 +4,10 @@
 # Student 1: Name, Student Number
 # Student 2: Charlie Tao, 1008251589
 ######################## Bitmap Display Configuration ########################
-# - Unit width in pixels:       1
-# - Unit height in pixels:      1
-# - Display width in pixels:    32
-# - Display height in pixels:   32
+# - Unit width in pixels:       8
+# - Unit height in pixels:      8
+# - Display width in pixels:    256
+# - Display height in pixels:   256
 # - Base Address for Display:   0x10008000 ($gp)
 ##############################################################################
 
@@ -51,17 +51,24 @@ PADDLE_COLOUR:
 	# Run the Brick Breaker game.
 main:
     lw $t0, ADDR_DSPL  # $t0 = base address for display
-    add $t1, $t0, 3776         # $t1 = ball position
-    add $t2, $t0, 3896         # $t2 = paddle position
+    add $t1, $t0, 3776         # $t1 = ball position at any time
+    add $t2, $t0, 3896         # $t2 = paddle position at any time
     lw $t3, ADDR_KBRD  # $t3 = base address for keyboard
     add $t4, $t2, -4 # $t4 = PIXEL ADDRESS TO DELETE
     li $t5, 0x00000000 # counter for functions
     li $t6, 0x00000020 # end of counter
-    lw $t7, GRAY       # NOT IN USE
+    lw $t7, GRAY       # TEMP COLOUR (but always set first)
     li $t8, 0x00000000 # keyboard input saver
-    li $t9, 0 # NOT IN USE
+    li $t9, 0          # NOT IN USE
     
     # Initialize the game
+    jal reset_red_brick_row
+    jal paint_brick_row
+    jal reset_green_brick_row
+    jal paint_brick_row
+    jal reset_blue_brick_row
+    jal paint_brick_row
+    
     jal draw_screen
     jal game_loop
     
@@ -150,14 +157,14 @@ reset_to_top:
 reset_to_left:
     lw $t0, ADDR_DSPL
     li $t5, 0
-    li $t6, 30 # Length of left
+    li $t6, 32 # Length of left
     lw $t7, GRAY
     jr $ra
 reset_to_right:
     lw $t0, ADDR_DSPL
     addi $t0, $t0, 124
     li $t5, 0
-    li $t6, 30 # Length of right
+    li $t6, 32 # Length of right
     lw $t7, GRAY
     jr $ra
 reset_paddle:
@@ -167,7 +174,30 @@ reset_paddle:
     li $t6, 5
     add $t0, $t2, $zero
     lw $t7, PADDLE_COLOUR 
-    
+    jr $ra
+reset_red_brick_row:
+    lw $t7, RED
+    lw $t0, ADDR_DSPL
+    addi $t0, $t0, 0x180 # 3 Rows down
+    addi $t0, $t0, 16     # 4 Pixels right
+    li $t5, 0
+    li $t6, 5
+    jr $ra
+reset_green_brick_row:
+    lw $t7, GREEN
+    lw $t0, ADDR_DSPL
+    addi $t0, $t0, 0x280  # 5 Rows down
+    addi $t0, $t0, 16     # 4 Pixels right
+    li $t5, 0
+    li $t6, 5
+    jr $ra
+reset_blue_brick_row:
+    lw $t7, BLUE
+    lw $t0, ADDR_DSPL
+    addi $t0, $t0, 0x380  # 7 Rows down
+    addi $t0, $t0, 16     # 4 Pixels right
+    li $t5, 0
+    li $t6, 5
     jr $ra
     
 paint_hline: # Paints horizontal line with $t6 pixels at $t0
@@ -184,27 +214,33 @@ paint_vline: # Paints vertical line with $t6 pixels at $t0
     addi $t5, $t5, 1
     j paint_vline
     
-paint_brick_row:  # NOT YET COMPLETED
+paint_brick_row:  
+    beq $t5, $t6, return
     addi $sp, $sp, -4
     sw $ra, 0($sp)
     
-    beq $t5, $t6, paint_brick_row
     jal paint_brick
     
     lw $ra, 0($sp)
     addi $sp, $sp, 4
+    addi $t0, $t0, 4
+    addi $t5, $t5, 1
     j paint_brick_row
 
-paint_brick: # Paints 4 pixel brick at $t0 
-    addi $sp, $sp, -4
+paint_brick: # Paints 4 pixel brick at $t0, $t0 is then the address of the last pixel
+    addi $sp, $sp, -12
     sw $ra, 0($sp)
+    sw $t5, 4($sp)
+    sw $t6, 8($sp)
     
     li $t5, 0
     li $t6, 4
     jal paint_hline
     
     lw $ra, 0($sp)
-    addi $sp, $sp, 4
+    lw $t5, 4($sp)
+    lw $t6, 8($sp)
+    addi $sp, $sp, 12
     jr $ra
     
 paint_paddle:
