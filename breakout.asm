@@ -50,16 +50,19 @@ PADDLE_COLOUR:
 
 	# Run the Brick Breaker game.
 main:
+    # Variable definitions
     lw $t0, ADDR_DSPL  # $t0 = base address for display
     add $t1, $t0, 3776         # $t1 = ball position at any time
     add $t2, $t0, 3896         # $t2 = paddle position at any time
     lw $t3, ADDR_KBRD  # $t3 = base address for keyboard
-    add $t4, $t2, -4 # $t4 = PIXEL ADDRESS TO DELETE
+    add $t4, $t2, -4 # $t4 = PADDLE ADDRESS TO DELETE
     li $t5, 0x00000000 # counter for functions
     li $t6, 0x00000020 # end of counter
     lw $t7, GRAY       # TEMP COLOUR (but always set first)
     li $t8, 0x00000000 # keyboard input saver
     li $t9, 0          # NOT IN USE
+    li $s1, 0          # $s1 = Ball x-velocity in 4s
+    li $s2, 0          # $s2 = Ball y-velocity in 4s
     
     # Initialize the game
     jal reset_red_brick_row
@@ -111,6 +114,7 @@ game_loop:
     # 1b. Check which key has been pressed
     # 2a. Check for collisions
 	# 2b. Update locations (paddle, ball)
+	jal update_ball
 	# 3. Draw the screen
 	jal draw_screen
 	# 4. Sleep
@@ -118,6 +122,14 @@ game_loop:
     # 5. Go back to 1
     b game_loop
     
+#########
+# Helper labels/functions
+#########
+update_ball:
+    add $t1, $t1, $s1
+    
+    jr $ra
+
 keyboard_input:
     addi $sp, $sp, -4       # Allocating 4 bytes into stack
     sw $ra, 0($sp)
@@ -125,7 +137,7 @@ keyboard_input:
     lw $a0, 4($t3)    # Load second word from keyboard
     beq $a0, 0x61, respond_to_a    # Check if the key a was pressed (move paddle left)
     beq $a0, 0x64, respond_to_d    # Check if the key d was pressed (move paddle right)
-    beq $a0, 0x77, respond_to_q    # Check if the key q was pressed (exit game)
+    beq $a0, 0x71, respond_to_q    # Check if the key q was pressed (exit game)
     # li $v0, 1                       # ask system to print $a0
     # syscall
     
