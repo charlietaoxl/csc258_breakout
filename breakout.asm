@@ -118,8 +118,6 @@ game_loop:
     # 5. Go back to 1
     b game_loop
     
-# 
-    
 keyboard_input:
     addi $sp, $sp, -4       # Allocating 4 bytes into stack
     sw $ra, 0($sp)
@@ -127,6 +125,7 @@ keyboard_input:
     lw $a0, 4($t3)    # Load second word from keyboard
     beq $a0, 0x61, respond_to_a    # Check if the key a was pressed (move paddle left)
     beq $a0, 0x64, respond_to_d    # Check if the key d was pressed (move paddle right)
+    beq $a0, 0x77, respond_to_q    # Check if the key q was pressed (exit game)
     # li $v0, 1                       # ask system to print $a0
     # syscall
     
@@ -148,6 +147,8 @@ respond_to_d:
     add $t4, $t2, $zero
     addi $t2, $t2, 4
     jr $ra
+respond_to_q:
+    j exit
 reset_to_top:
     lw $t0, ADDR_DSPL
     li $t5, 0
