@@ -1,0 +1,100 @@
+\documentclass{article}
+
+%% Page Margins %%
+\usepackage{geometry}
+\geometry{
+    top = 0.75in,
+    bottom = 0.75in,
+    right = 0.75in,
+    left = 0.75in,
+}
+
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage{parskip}
+
+\title{Assembly Project: Breakout}
+
+% TODO: Enter your name
+\author{Charlie Tao & Clark Zhang}
+
+\begin{document}
+\maketitle
+
+\section{Instruction and Summary}
+
+\begin{enumerate}
+
+    \item Which milestones were implemented? 
+    1, 2
+
+    \item How to view the game:
+    % TODO: specify the pixes/unit, width and height of 
+    %       your game, etc.  NOTE: list these details in
+    %       the header of your breakout.asm file too!
+    
+    \begin{enumerate}
+
+    \item Launch compiler of choice
+    \item View bitmap and connect keyboard (depending on compiler)
+    \item Compile and run! 'a' moves left, 'd' moves right, 'q' exits.
+
+
+    \end{enumerate}
+
+    
+
+\begin{figure}[ht!]
+    \centering
+    \includegraphics[width=0.3\textwidth]{pic_breakout_start.png}
+    \caption{caption}
+    \label{Instructions}
+\end{figure}
+
+\item Game Summary:
+% TODO: Tell us a little about your game.
+\begin{itemize}
+\item Hit the ball to bounce on the blocks, clear all blocks this way
+\item Paddle moves left and right
+\item Ball bounces with inverting velocities on walls and bricks, different areas on the paddle bounce differently
+\end{itemize}
+
+    
+\end{enumerate}
+
+\section{Attribution Table}
+% TODO: If you worked in partners, tell us who was 
+%       responsible for which features. Some reweighting 
+%       might be possible in cases where one group member
+%       deserves extra credit for the work they put in.
+
+\begin{center}
+\begin{tabular}{|| c | c ||}
+\hline
+ Charlie Tao 1008251589 &  Clark Zhang 1008423421 \\ 
+ \hline
+ Drawing paddle & Drawing walls\\
+ \hline
+ Drawing bricks & Keyboard input\\
+ \hline
+ Keyboard response & Game loop\\ 
+ \hline
+ Task & Task\\ 
+ \hline
+ Task & Task\\
+ \hline
+ Task & Task\\  
+ \hline
+\end{tabular}
+\end{center}
+
+% TODO: Fill out the remainder of the document as you see 
+%       fit, including as much detail as you think 
+%       necessary to better understand your code. 
+%       You can add extra sections and subsections to 
+%       help us understand why you deserve marks for 
+%       features that were more challenging than they
+%       might initially seem.
+
+
+\end{document}
