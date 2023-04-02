@@ -60,8 +60,23 @@ BALL:
 	# Run the Brick Breaker game.
 main:
     # Variable definitions
+<<<<<<< HEAD
     lw $t1, PADDLE # temporary load
     add $s4, $t1, -4 # $s4 = PADDLE ADDRESS TO DELETE (Local variable that all functions can access)
+=======
+    lw $t0, ADDR_DSPL  # $t0 = base address for display
+    add $t1, $t0, 3776         # $t1 = ball position at any time
+    add $t2, $t0, 3896         # $t2 = paddle position at any time
+    lw $t3, ADDR_KBRD  # $t3 = base address for keyboard
+    add $t4, $t2, -4   # $t4 = PADDLE ADDRESS TO DELETE
+    li $t5, 0x00000000 # counter for functions
+    li $t6, 0x00000020 # end of counter
+    lw $t7, GRAY       # TEMP COLOUR (but always set first)
+    li $t8, 0x00000000 # keyboard input saver
+    li $t9, 0          # NOT IN USE
+    li $s1, 0          # $s1 = Ball x-velocity in 4s
+    li $s2, 0          # $s2 = Ball y-velocity in 4s
+>>>>>>> 4bb3909 (saving)
     
     # Initialize the game
     jal reset_red_brick_row
