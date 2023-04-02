@@ -41,7 +41,16 @@ PADDLE_COLOUR:
 ##############################################################################
 # Mutable Data
 ##############################################################################
+PADDLE:
+    .word 0x10008F38 # position of the paddle
     
+BALL:
+    .word 0x10008EC0 # position of the ball
+    .word 0 # x-velocity of the ball
+    .word 0 # y-velocity of the ball
+
+    
+
 ##############################################################################
 # Code
 ##############################################################################
@@ -51,18 +60,8 @@ PADDLE_COLOUR:
 	# Run the Brick Breaker game.
 main:
     # Variable definitions
-    lw $t0, ADDR_DSPL  # $t0 = base address for display
-    add $t1, $t0, 3776         # $t1 = ball position at any time
-    add $t2, $t0, 3896         # $t2 = paddle position at any time
-    lw $t3, ADDR_KBRD  # $t3 = base address for keyboard
-    add $t4, $t2, -4 # $t4 = PADDLE ADDRESS TO DELETE
-    li $t5, 0x00000000 # counter for functions
-    li $t6, 0x00000020 # end of counter
-    lw $t7, GRAY       # TEMP COLOUR (but always set first)
-    li $t8, 0x00000000 # keyboard input saver
-    li $t9, 0          # NOT IN USE
-    li $s1, 0          # $s1 = Ball x-velocity in 4s
-    li $s2, 0          # $s2 = Ball y-velocity in 4s
+    lw $t1, PADDLE # temporary load
+    add $s4, $t1, -4 # $s4 = PADDLE ADDRESS TO DELETE (Local variable that all functions can access)
     
     # Initialize the game
     jal reset_red_brick_row
@@ -81,6 +80,7 @@ draw_screen:
     addi $sp, $sp, -4
     sw $ra, 0($sp)
     
+    # can't we also just draw the walls once
     jal reset_to_top
     jal paint_hline
     jal reset_to_left
@@ -90,6 +90,7 @@ draw_screen:
     jal reset_paddle
     jal paint_paddle
     jal paint_ball
+    # jal check_collision
 
     lw $ra, 0($sp)
     addi $sp, $sp, 4 
@@ -99,13 +100,6 @@ draw_screen:
 # Helper labels/functions
 #########
 game_loop:
-	# 1a. Check if key has been pressed
-    # 1b. Check which key has been pressed
-    # 2a. Check for collisions
-	# 2b. Update locations (paddle, ball)
-	# 3. Draw the screen
-	# 4. Sleep
-    # 5. Go back to 1
     
     # 1a. Check if key has been pressed
     lw $t3, ADDR_KBRD               # $t3 = base address for keyboard
@@ -114,7 +108,7 @@ game_loop:
     # 1b. Check which key has been pressed
     # 2a. Check for collisions
 	# 2b. Update locations (paddle, ball)
-	jal update_ball
+	# jal update_ball
 	# 3. Draw the screen
 	jal draw_screen
 	# 4. Sleep
@@ -125,10 +119,10 @@ game_loop:
 #########
 # Helper labels/functions
 #########
-update_ball:
-    add $t1, $t1, $s1
+# update_ball:
+    # add $t1, $t1, $s1
     
-    jr $ra
+    # jr $ra
 
 keyboard_input:
     addi $sp, $sp, -4       # Allocating 4 bytes into stack
@@ -145,100 +139,144 @@ keyboard_input:
     addi $sp, $sp, 4
     
     jr $ra
+    
+
 respond_to_a:
+    lw $t2, PADDLE
     lw $t0, ADDR_DSPL
     addi $t0, $t0, 3844
+    
     beq $t2, $t0, return
-    add $t4, $t2, 16
+    add $s4, $t2, 16
     addi $t2, $t2, -4
+    sw $t2, PADDLE
+    
     jr $ra
+    
 respond_to_d:
+    lw $t2, PADDLE
     lw $t0, ADDR_DSPL
+    
     addi $t0, $t0, 3944
     beq $t2, $t0, return
-    add $t4, $t2, $zero
+    add $s4, $t2, $zero
     addi $t2, $t2, 4
+    sw $t2, PADDLE
+    
     jr $ra
+    
 respond_to_q:
     j exit
+    
 reset_to_top:
-    lw $t0, ADDR_DSPL
-    li $t5, 0
-    li $t6, 32 # Length of top
-    lw $t7, GRAY
+    lw $a2, ADDR_DSPL
+    li $a0, 0
+    li $a1, 32 # Length of top
+    lw $a3, GRAY
     jr $ra
+    
 reset_to_left:
-    lw $t0, ADDR_DSPL
-    li $t5, 0
-    li $t6, 32 # Length of left
-    lw $t7, GRAY
+    lw $a2, ADDR_DSPL
+    li $a0, 0
+    li $a1, 32 # Length of left
+    lw $a3, GRAY
     jr $ra
+    
 reset_to_right:
-    lw $t0, ADDR_DSPL
-    addi $t0, $t0, 124
-    li $t5, 0
-    li $t6, 32 # Length of right
-    lw $t7, GRAY
+    lw $a2, ADDR_DSPL
+    addi $a2, $a2, 124
+    li $a0, 0
+    li $a1, 32 # Length of right
+    lw $a3, GRAY
     jr $ra
+    
 reset_paddle:
     lw $t7, BLACK
-    sw $t7, 0($t4)
-    li $t5, 0
-    li $t6, 5
-    add $t0, $t2, $zero
-    lw $t7, PADDLE_COLOUR 
+    sw $t7, 0($s4)
+    li $a0, 0
+    li $a1, 5
+    lw $t6, PADDLE
+    add $a2, $t6, $zero
+    lw $a3, PADDLE_COLOUR
+    
     jr $ra
 reset_red_brick_row:
-    lw $t7, RED
+    li $a0, 0 # set counter for drawing bricks
+    li $a1, 5 # set end counter
+    lw $a3, RED # set color
     lw $t0, ADDR_DSPL
     addi $t0, $t0, 0x180 # 3 Rows down
     addi $t0, $t0, 16     # 4 Pixels right
-    li $t5, 0
-    li $t6, 5
+    move $a2, $t0
+    
     jr $ra
+    
 reset_green_brick_row:
-    lw $t7, GREEN
+    li $a0, 0 # set counter for drawing bricks
+    li $a1, 5 # set end counter
+    lw $a3, GREEN # set color
     lw $t0, ADDR_DSPL
-    addi $t0, $t0, 0x280  # 5 Rows down
+    addi $t0, $t0, 0x280 # 3 Rows down
     addi $t0, $t0, 16     # 4 Pixels right
-    li $t5, 0
-    li $t6, 5
+    move $a2, $t0
+    
     jr $ra
+    
 reset_blue_brick_row:
-    lw $t7, BLUE
+    li $a0, 0 # set counter for drawing bricks
+    li $a1, 5 # set end counter
+    lw $a3, BLUE # set color
     lw $t0, ADDR_DSPL
-    addi $t0, $t0, 0x380  # 7 Rows down
+    addi $t0, $t0, 0x380 # 3 Rows down
     addi $t0, $t0, 16     # 4 Pixels right
-    li $t5, 0
-    li $t6, 5
+    move $a2, $t0
+    
     jr $ra
     
 paint_hline: # Paints horizontal line with $t6 pixels at $t0
-    beq $t5, $t6, return
-    sw $t7, 0($t0)
-    addi $t0, $t0, 4
-    addi $t5, $t5, 1
-    j paint_hline
+    add $t5, $a0, $zero # counter
+    add $t6, $a1, $zero # end of counter
+    add $t0, $a2, $zero # left-most pixel of starting line
+    add $t7, $a3, $zero # color
+    
+    loop_hline:
+        beq $t5, $t6, return
+        sw $t7, 0($t0)
+        addi $t0, $t0, 4
+        addi $a2, $a2, 4
+        addi $t5, $t5, 1
+        j loop_hline
 
 paint_vline: # Paints vertical line with $t6 pixels at $t0
-    beq $t5, $t6, return
-    sw $t7, 0($t0)
-    addi $t0, $t0, 128
-    addi $t5, $t5, 1
-    j paint_vline
+    add $t5, $a0, $zero # counter
+    add $t6, $a1, $zero # end of counter
+    add $t0, $a2, $zero # left-most pixel of starting line
+    add $t7, $a3, $zero # color
+
+    loop_vline: 
+        beq $t5, $t6, return
+        sw $t7, 0($t0)
+        addi $t0, $t0, 128
+        addi $t5, $t5, 1
+        j loop_vline
     
-paint_brick_row:  
-    beq $t5, $t6, return
-    addi $sp, $sp, -4
-    sw $ra, 0($sp)
+paint_brick_row:
+    add $t5, $a0, $zero # counter
+    add $t6, $a1, $zero # end of counter
+    # note that color stored in the argument $a3
     
-    jal paint_brick
-    
-    lw $ra, 0($sp)
-    addi $sp, $sp, 4
-    addi $t0, $t0, 4
-    addi $t5, $t5, 1
-    j paint_brick_row
+    loop_brick_row:
+        beq $t5, $t6, return
+        addi $sp, $sp, -4
+        sw $ra, 0($sp)
+        
+        jal paint_brick
+        
+        lw $ra, 0($sp)
+        addi $sp, $sp, 4
+        addi $a2, $a2, 4
+        addi $t5, $t5, 1
+        j loop_brick_row
 
 paint_brick: # Paints 4 pixel brick at $t0, $t0 is then the address of the last pixel
     addi $sp, $sp, -12
@@ -246,8 +284,8 @@ paint_brick: # Paints 4 pixel brick at $t0, $t0 is then the address of the last 
     sw $t5, 4($sp)
     sw $t6, 8($sp)
     
-    li $t5, 0
-    li $t6, 4
+    li $a0, 0
+    li $a1, 4
     jal paint_hline
     
     lw $ra, 0($sp)
@@ -268,9 +306,11 @@ paint_paddle:
 
 paint_ball:
     lw $t7, WHITE
+    lw $t1, BALL
     sw $t7, 0($t1)
     jr $ra
 
+    
 return:
     jr $ra
 exit:
