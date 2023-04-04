@@ -48,12 +48,14 @@ BALL:
     .word 0x10008EC0 # 0:   Position of the ball
     .word 16         # 4:   x-coord of the ball
     .word 29         # 8:   y-coord of the ball
-    .word 0          # 12:  x-velocity of the ball
-    .word 0          # 16:  y-velocity of the ball
+    .word -1          # 12:  x-velocity of the ball
+    .word -1          # 16:  y-velocity of the ball
     .word 0x10008FC0 # 20:  Collision address
     .word 0x10008EC0 # 24:  Previous position
 
-    
+LOOP_BUFFER: # So far purpose is to slow down ball
+    .word 0 # Loop counter
+    .word 8 # Number of loops to wait for
 
 ##############################################################################
 # Code
@@ -110,42 +112,62 @@ game_loop:
     beq $t8, 1, keyboard_input      # If first word 1, key is pressed
     # 1b. Check which key has been pressed
     # 2a. Check for collisions
+    jal ball_collision_check # DOESN'T WORK
 	# 2b. Update locations (paddle, ball)
 	jal update_ball
 	# 3. Draw the screen
 	jal draw_screen
-	# 4. Sleep 0.01 second (0.05 second and above has keyboard problems)
+	# 4. Sleep (0.05 second and above has keyboard problems)
 	li $v0, 32
 	li $a0, 10
 	syscall
+	
     # 5. Go back to 1
-    b game_loop
+    la $t0, LOOP_BUFFER # Makes the ball move slower
+    lw $t1, 0($t0)
+    lw $t2, 4($t0)
+    beq $t1, $t2, reset_loop_buffer
+    addi $t1, $t1, 1
+    sw $t1, 0($t0)
+    j resume_game_loop
+    reset_loop_buffer:
+        li $t1, 0
+        sw $t1, 0($t0)
+        j resume_game_loop
+        
+    resume_game_loop:
+        b game_loop
     
 #########
 # Helper labels/functions
 #########
-coords_to_address: # Takes $a0 and $a1 as x and y coordinates respectively. Returns address in $a3.
-    li $a3, 4
-    mult $a0, $a3       # Converting x coord to address offset
+coords_to_address: # Takes $a0 and $a1 as x and y coordinates respectively. Returns address in $v0.
+    li $v0, 4
+    mult $a0, $v0       # Converting x coord to address offset
     mflo $a0
-    mult $a1, $a3       # Converting y coord to address offset
+    mult $a1, $v0       # Converting y coord to address offset
     mflo $a1
-    li $a3, 32
-    mult $a1, $a3
+    li $v0, 32
+    mult $a1, $v0
     mflo $a1
     
-    lw $a3, ADDR_DSPL
-    add $a3, $a3, $a0 # x offset
-    add $a3, $a3, $a1 # y offset
+    lw $v0, ADDR_DSPL
+    add $v0, $v0, $a0 # x offset
+    add $v0, $v0, $a1 # y offset
     
     jr $ra
     
 update_ball:
+    la $t0, LOOP_BUFFER # Checks whether LOOP_BUFFER hits max
+    lw $t1, 0($t0)
+    lw $t2, 4($t0)
+    
+    beq $t1, $t2, start_update_ball
+    jr $ra
+start_update_ball:
     addi $sp, $sp, -4 # Jal-safe
     sw $ra, 0($sp)
-        
-    # Performing collision check
-    # jal ball_collision_check
+    
     la $t4, BALL    # Loading Ball struct address
     lw $t5, 0($t4)  # Loading Ball address
     lw $t0, 4($t4)  # Loading x-coord
@@ -157,13 +179,12 @@ update_ball:
     add $t0, $t0, $t2 # Updating x-coord
     add $t1, $t1, $t3 # Updating y-coord
     
-    
     # Converting coordinates to address and storing prev
     add $a0, $t0, $zero
     add $a1, $t1, $zero
     jal coords_to_address
     sw $t5, 24($t4)
-    add $t5, $a3, $zero
+    add $t5, $v0, $zero
 
     sw $t5, 0($t4)  # Store Ball address
     sw $t0, 4($t4)  # Store x-coord
@@ -175,7 +196,10 @@ update_ball:
     addi $sp, $sp, 4
     jr $ra
     
-ball_collision_check: # Checks for collision and appropriately changes the velocity of ball, assumes 
+ball_collision_check: # Checks for collision and appropriately changes the velocity of ball 
+    addi $sp, $sp, -4
+    sw $ra, 0($sp)
+    
     la $t4, BALL      # Loading Ball struct
     lw $t5, 0($t4)    # Loading Ball address
     lw $t0, 4($t4)    # Loading x-coord
@@ -183,33 +207,76 @@ ball_collision_check: # Checks for collision and appropriately changes the veloc
     lw $t2, 12($t4)   # Loading x-velocity
     lw $t3, 16($t4)   # Loading y-velocity
 
-    # Check cardinals
-    add $t5, $t0, $zero     # Loading pixel above
-    addi $t6, $t1, -1
+    li $t8, -1  # For flipping velocity signs
+    li $t9, 0   # Number of velocity changes
+check_up_or_down_pixel:
+    add $a0, $t0, $zero 
+    add $a1, $t1, $t3
+    jal coords_to_address
+    add $a0, $v0, $zero
+    jal pixel_colour_check
+    beq $v1, $zero, check_left_or_right_pixel
+    mult $t3, $t8
+    mflo $t3
+    addi $t9, $t9, 1
+check_left_or_right_pixel:
+    add $a0, $t0, $t2
+    add $a1, $t1, $zero
+    jal coords_to_address
+    add $a0, $v0, $zero
+    jal pixel_colour_check
+    beq $v1, $zero, check_diagonal_pixel
+    mult $t2, $t8
+    mflo $t2
+    addi $t9, $t9, 1
+check_diagonal_pixel:
+    add $a0, $t0, $t2
+    add $a1, $t1, $t3
+    jal coords_to_address
+    add $a0, $v0, $zero
+    jal pixel_colour_check
+    beq $v1, $zero, finish_checking_pixels
+    bgt $t9, $zero, finish_checking_pixels
+    mult $t2, $t8
+    mflo $t2
+    mult $t3, $t8
+    mflo $t3
+    addi $t9, $t9, 1
+finish_checking_pixels: 
+    sw $t2, 12($t4)   # Loading x-velocity
+    sw $t3, 16($t4)   # Loading y-velocity
+    lw $ra, 0($sp)
+    addi $sp, $sp, 4
+    jr $ra
     
-    add $t5, $t0, $zero     # Loading pixel below 
-    addi $t6, $t1,  1
-    
-    addi $t5, $t0, -1       # Loading pixel left 
-    add $t6, $t1, $zero
-    
-    addi $t5, $t0, 1        # Loading pixel right 
-    add $t6, $t1, $zero
-    
-    # Check diagonals
-    beq $t9, $zero, return  # If no collisions in cardinals
-    addi $t5, $t0, -1       # Loading pixel top-left
-    addi $t6, $t1, -1
-    
-    addi $t5, $t0, 1        # Loading pixel top-right
-    addi $t6, $t1,  1
-    
-    addi $t5, $t0, -1       # Loading pixel bot-left
-    addi $t6, $t1, -1
-    
-    addi $t5, $t0, 1        # Loading pixel bot-right 
-    addi $t6, $t1, -1
-    
+pixel_colour_check: # Sets $v1 to 0 if not bouncable, and 1 if is bouncable
+    add $a3, $a0, $zero
+    lw $a3, 0($a3)
+    li $v1, 0
+pixeL_colour_check_space:
+    lw $a2, BLACK
+    beq $a3, $a2, pixel_colour_check_bouncable
+    jr $ra 
+pixel_colour_check_bouncable:
+    lw $a2, GRAY
+    beq $a3, $a2, collide_wall
+    lw $a2, PADDLE_COLOUR
+    beq $a3, $a2, collide_paddle
+    lw $a2, RED
+    beq $a3, $a2, collide_brick # Checking colours that are not bricks
+    lw $a2, GREEN
+    beq $a3, $a2, collide_brick
+    lw $a2, BLUE
+    beq $a3, $a2, collide_brick
+    jr $ra
+collide_paddle:
+    li $v1, 1
+    jr $ra
+collide_wall:
+    li $v1, 1
+    jr $ra
+collide_brick:
+    li $v1, 1
     jr $ra
     
 keyboard_input:
@@ -399,16 +466,16 @@ paint_ball: # Erases previous position then paints current position
     la $t0, BALL
     lw $a0, 4($t0)
     lw $a1, 8($t0)
-    jal coords_to_address   # $a3 contains position of ball
+    jal coords_to_address   # $v0 contains position of ball
     lw $t1, 24($t0)         # $t1 contains position of prev
     
-    beq $a3, $t1, paint_ball_normally # If prev and ball are the same, dont erase
+    beq $v0, $t1, paint_ball_normally # If prev and ball are the same, dont erase
     lw $t7, BLACK
     sw $t7, 0($t1)
     
     paint_ball_normally:
         lw $t7, WHITE
-        sw $t7, 0($a3)
+        sw $t7, 0($v0)
     
     lw $ra, 0($sp)
     addi $sp, $sp, 4
