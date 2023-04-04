@@ -206,8 +206,8 @@ ball_collision_check: # Checks for collision and appropriately changes the veloc
     lw $t1, 8($t4)    # Loading y-coord
     lw $t2, 12($t4)   # Loading x-velocity
     lw $t3, 16($t4)   # Loading y-velocity
-
-    li $t8, -1  # For flipping velocity signs
+    
+    li $t8, 2  # For flipping velocity signs
     li $t9, 0   # Number of velocity changes
 check_up_or_down_pixel:
     add $a0, $t0, $zero 
@@ -216,8 +216,10 @@ check_up_or_down_pixel:
     add $a0, $v0, $zero
     jal pixel_colour_check
     beq $v1, $zero, check_left_or_right_pixel
+    add $t7, $t3, $zero # Flipping y-velocity
     mult $t3, $t8
     mflo $t3
+    sub $t3, $t7, $t3
     addi $t9, $t9, 1
 check_left_or_right_pixel:
     add $a0, $t0, $t2
@@ -226,8 +228,10 @@ check_left_or_right_pixel:
     add $a0, $v0, $zero
     jal pixel_colour_check
     beq $v1, $zero, check_diagonal_pixel
+    add $t7, $t2, $zero # Flipping x-velocity
     mult $t2, $t8
     mflo $t2
+    sub $t2, $t7, $t2
     addi $t9, $t9, 1
 check_diagonal_pixel:
     add $a0, $t0, $t2
@@ -237,10 +241,14 @@ check_diagonal_pixel:
     jal pixel_colour_check
     beq $v1, $zero, finish_checking_pixels
     bgt $t9, $zero, finish_checking_pixels
+    add $t7, $t2, $zero # Flipping x-velocity
     mult $t2, $t8
     mflo $t2
+    sub $t2, $t7, $t2
+    add $t7, $t3, $zero # Flipping y-velocity
     mult $t3, $t8
     mflo $t3
+    sub $t3, $t7, $t3
     addi $t9, $t9, 1
 finish_checking_pixels: 
     sw $t2, 12($t4)   # Loading x-velocity
@@ -253,17 +261,15 @@ pixel_colour_check: # Sets $v1 to 0 if not bouncable, and 1 if is bouncable
     add $a3, $a0, $zero
     lw $a3, 0($a3)
     li $v1, 0
-pixeL_colour_check_space:
+    
     lw $a2, BLACK
-    beq $a3, $a2, pixel_colour_check_bouncable
-    jr $ra 
-pixel_colour_check_bouncable:
+    beq $a3, $a2, return
     lw $a2, GRAY
     beq $a3, $a2, collide_wall
     lw $a2, PADDLE_COLOUR
     beq $a3, $a2, collide_paddle
     lw $a2, RED
-    beq $a3, $a2, collide_brick # Checking colours that are not bricks
+    beq $a3, $a2, collide_brick 
     lw $a2, GREEN
     beq $a3, $a2, collide_brick
     lw $a2, BLUE
