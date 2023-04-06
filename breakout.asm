@@ -66,7 +66,7 @@ GAME_STATUS:
     .word 16            # 8:    Ball Game Start x
     .word 29            # 12:   Ball Game Start y
     .word 0x10008F38    # 16:   Paddle Game Start
-    .word 30            # 20:   Bricks Left
+    .word 10            # 20:   Bricks Left
     .word 1             # 24:   1 = Game on, 0 = Game pause
     .word 1             # 28:   Current level, starting from 1. 0 is menu, and -1 is Loss.
 
@@ -86,9 +86,10 @@ main:
     jal soft_reset_globals
     lw $t1, PADDLE # temporary load
     add $s4, $t1, -4 # $s4 = PADDLE ADDRESS TO DELETE (Local variable that all functions can access)
+    
     la $t0, GAME_STATUS # Load proper level
-    lw $t1, 20($t0)
-    li $t2, 1
+    lw $t1, 28($t0)
+    li $t2, 2
     beq $t1, $t2, set_main_game_bricks_2
 set_main_game_bricks_1:
     jal reset_red_brick_row
@@ -114,6 +115,8 @@ set_main_game_bricks_2:
     jal reset_blue_brick_row2
     jal paint_brick_row
     la $t0, GAME_STATUS
+    li $t1, 59
+    sw $t1, 20($t0)
     j main_game_loop
 main_game_loop:
     jal draw_screen
@@ -207,6 +210,29 @@ game_loop:
         li $t1, 0
         sw $t1, 0($t0)
         j resume_game_loop
+        
+    # 6. Check if level is complete
+    start_move_to_level2:
+        la $t0, GAME_STATUS
+        lw $t1, 20($t0)
+        beq $t1, $zero, move_to_level2
+    move_to_level2:
+        li $t1, 2 # Changing level to 2
+        sw $t1, 28($t0)
+        li $v0, 32 # Sleep transition
+    	li $a0, 500
+    	syscall
+    	
+    	la $t0, BALL
+    	lw $t1, 0($t0)
+    	lw $t2, BLACK
+    	sw $t2, 0($t1)
+    	
+    	jal reset_paddle
+        lw $a3, BLACK
+        jal paint_paddle
+    	
+    	j main
     resume_game_loop:
         b game_loop
     
@@ -357,6 +383,14 @@ pixel_colour_check: # Takes address $a0. Sets $v1 to 0 if not bouncable, and 1 i
     beq $a3, $a2, collide_brick
     jr $ra
 collide_paddle:
+    # Sound
+    li $v0, 31
+    li $a0, 60  # C
+    li $a1, 100 # 100ms
+    li $a2, 0   # Default piano
+    li $a3, 100 # Default volume
+    syscall
+    
     la $a3, PADDLE
     lw $a3, 0($a3)
     beq $a0, $a3, bounce_left_edge_paddle
@@ -379,9 +413,18 @@ bounce_right_edge_paddle:
     li $t3, -1
     jr $ra
 collide_wall:
+    # Sound
+    li $v0, 31
+    li $a0, 48  # Lower C
+    li $a1, 100 # 100ms
+    li $a2, 0   # Default piano
+    li $a3, 100 # Default volume
+    syscall
+    
     li $v1, 1
     jr $ra
 collide_brick:
+    
     addi $sp, $sp, -4
     sw $ra, 0($sp)
     
@@ -399,6 +442,14 @@ collide_brick:
     lw $a1, 28($t4) # Increment bricks hit
     addi $a1, $a1, 1
     sw $a1, 28($t4)
+    
+    # Sound
+    li $v0, 31
+    li $a0, 72  # Higher C
+    li $a1, 100 # 100ms
+    li $a2, 0   # Default piano
+    li $a3, 100 # Default volume
+    syscall
     
     lw $ra, 0($sp)
     addi $sp, $sp, 4
@@ -437,19 +488,19 @@ solve_brick_collisions:
 continue_brick_collision:
     la $t0, GAME_STATUS # Updating bricks left
     lw $t1, 20($t0)
-    beq $t1, $zero, exit
     addi $t1, $t1, -1
     sw $t1, 20($t0)
+    beq $t1, $zero, start_move_to_level2
     
     lw $ra, 0($sp)
     addi $sp, $sp, 4
     
     la $t0, BALL # Determining speed up
     lw $t1, 28($t0)
-    li $t3, 5
-    beq $t1, $t3, ball_speed_up1
     li $t3, 10
-    beq $t1, $t3, ball_speed_up2
+    bgt $t1, $t3, ball_speed_up2
+    li $t3, 5
+    bgt $t1, $t3, ball_speed_up1
     jr $ra
 ball_speed_up1:
     la $t0, LOOP_BUFFER
@@ -482,6 +533,7 @@ ball_lost_case:
     beq $t1, $zero, exit # GAME_OVER
     addi $t1, $t1, -1 # Decrement lives
     sw $t1, 0($t0)
+    sw $zero, 0($t2)
     sw $zero, 28($t0) # Reset bricks hit
     
     jal reset_paddle
@@ -649,7 +701,7 @@ paint_unbreakable_brick:
     sw $ra, 0($sp)
     
     li $a0, 14
-    li $a1, 14
+    li $a1, 15
     jal coords_to_address
     add $a2, $v0, $zero
     li $a0, 0
