@@ -186,6 +186,10 @@ game_loop:
     lw $t3, ADDR_KBRD               # $t3 = base address for keyboard
     lw $t8, 0($t3)                  # Load first word from keyboard
     beq $t8, 1, keyboard_input      # If first word 1, key is pressed
+    # Check Pause
+    la $t0, GAME_STATUS
+    lw $t1, 24($t0)
+    beq $t1, $zero, game_loop
     # 1b. Check which key has been pressed
     # 2a. Check for collisions
     jal ball_collision_check # DOESN'T WORK
@@ -551,7 +555,7 @@ keyboard_input:
     beq $a0, 0x64, respond_to_d    # Check if the key d was pressed (move paddle right)
     beq $a0, 0x71, respond_to_q    # Check if the key q was pressed (exit game)
     beq $a0, 0x72, respond_to_r    # Check if the key r was pressed (restart game)
-    
+    beq $a0, 0x70, respond_to_p    # Check if the key p was pressed (pause game)
     # li $v0, 1                    # ask system to print $a0
     # syscall
     
@@ -559,7 +563,6 @@ keyboard_input:
     addi $sp, $sp, 4
     
     jr $ra
-    
 
 respond_to_a:
     lw $t2, PADDLE
@@ -596,6 +599,34 @@ respond_to_r:
     la $a1, BALL
     sw $a3, 0($a1)
     b main
+    
+respond_to_p: # If Game on (1), the pause (0). If Pause (0),  then Game on (1)
+    la $t0, GAME_STATUS
+    lw $t2, 24($t0)
+    li $t1, 1
+    beq $t2, $t1, respond_to_p_pause
+    beq $t2, $zero, respond_to_p_unpause
+    jr $ra
+respond_to_p_pause:
+    lw $s5, PADDLE
+    sw $zero, 24($t0)
+    jr $ra
+respond_to_p_unpause:
+    addi $sp, $sp, -4
+    sw $ra, 0($sp)
+    
+    sw $t1, 24($t0)
+    sw $s5, PADDLE
+    jal reset_paddle
+    lw $a3, BLACK
+    jal paint_paddle
+    jal reset_paddle
+    jal paint_paddle
+    
+    
+    lw $ra, 0($sp)
+    addi $sp, $sp, 4
+    jr $ra
     
 reset_to_top:
     lw $a2, ADDR_DSPL
