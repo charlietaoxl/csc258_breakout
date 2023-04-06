@@ -1,8 +1,8 @@
 ################ CSC258H1F Fall 2022 Assembly Final Project ##################
 # This file contains our implementation of Breakout.
 #
-# Student 1: Name, Student Number
-# Student 2: Charlie Tao, 1008251589
+# Student 1: Charlie Tao, 1008251589
+# Student 2: Clark Zhang, 1008423421
 ######################## Bitmap Display Configuration ########################
 # - Unit width in pixels:       8
 # - Unit height in pixels:      8
@@ -128,7 +128,6 @@ draw_screen:
     addi $sp, $sp, -4
     sw $ra, 0($sp)
     
-    # can't we also just draw the walls once
     jal solve_brick_collisions
     jal reset_to_top
     jal paint_hline

@@ -26,7 +26,7 @@
 \begin{enumerate}
 
     \item Which milestones were implemented? 
-    1, 2
+    1, 2, 3, 4, 5
 
     \item How to view the game:
     % TODO: specify the pixes/unit, width and height of 
@@ -37,7 +37,7 @@
 
     \item Launch compiler of choice
     \item View bitmap and connect keyboard (depending on compiler)
-    \item Compile and run! 'a' moves left, 'd' moves right, 'q' exits.
+    \item Compile and run! 'a' moves left, 'd' moves right, 'q' exits, 'p' pauses/unpauses the game. Enjoy!
 
 
     \end{enumerate}
@@ -47,16 +47,26 @@
 \begin{figure}[ht!]
     \centering
     \includegraphics[width=0.3\textwidth]{pic_breakout_start.png}
-    \caption{caption}
+    \caption{Level 1}
+    \label{Instructions}
+\end{figure}
+
+\begin{figure}[ht!]
+    \centering
+    \includegraphics[width=0.3\textwidth]{pic_breakout_stage2.png}
+    \caption{Level 2}
     \label{Instructions}
 \end{figure}
 
 \item Game Summary:
 % TODO: Tell us a little about your game.
 \begin{itemize}
-\item Hit the ball to bounce on the blocks, clear all blocks this way
 \item Paddle moves left and right
-\item Ball bounces with inverting velocities on walls and bricks, different areas on the paddle bounce differently
+\item Hit the ball to bounce on the blocks
+\item The edges of the paddle bounce the ball to the left or right respectively. The middle bounces the ball upwards. 
+\item The more bricks you hit, the faster the ball gets!
+\item Once you reach a certain progress in the first stage, you move on to the next. 
+\item Clear all the blocks! Good Luck!
 \end{itemize}
 
     
@@ -79,11 +89,11 @@
  \hline
  Keyboard response & Game loop\\ 
  \hline
- Ball Movement & Task\\ 
+ Moving Ball & Breaking Blocks\\ 
  \hline
- Ball Collision & Task\\
+ Collision & Refactoring\\
  \hline
- Task & Task\\  
+ Milestone 5 & Milestone 4\\  
  \hline
 \end{tabular}
 \end{center}
@@ -95,6 +105,15 @@
 %       help us understand why you deserve marks for 
 %       features that were more challenging than they
 %       might initially seem.
+\section{Notable features}
 
+\begin{enumerate}
+    \item 5 EASY FEATURES DONE: Unbreakable brick, Ball speed up, Game pausing, Sounds, 3 Lives (amount is changeable in code)
+    \item 3 HARD FEATURES DONE: Differing paddle bounce, Second level, Multiple hits to break bricks.
+    \item COLLISION: Collision was definitely the most challenging part of this project compared to what it seemed. After many trials and differing attempts to implement collision, I finally came to a working method. 
+    
+    This method was to check only 3 pixels instead of all 8 pixels. This way, only the pixels that the ball passes through are checked, and the bounce is properly calculated upon hitting the block. The velocity of the bounce as well as its x and y positions were stored in a global Ball struct. By finding the negative of the velocity, the ball was able to bounce. Creating a robust collision system is what allowed the other features to be implemented easier. 
+    
+\end{enumerate} 
 
 \end{document}
