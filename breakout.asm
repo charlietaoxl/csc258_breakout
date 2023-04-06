@@ -25,10 +25,16 @@ ADDR_KBRD:
 # Standard Colours
 RED:
     .word 0xff0000
+HALF_RED:
+    .word 0x880000
 GREEN:
     .word 0x00ff00
+HALF_GREEN:
+    .word 0x008800
 BLUE:
     .word 0x0000ff
+HALF_BLUE:
+    .word 0x000088
 WHITE:
     .word 0xffffff
 BLACK:
@@ -52,6 +58,7 @@ BALL:
     .word -1          # 16:  y-velocity of the ball
     .word 0          # 20:  Collision address
     .word 0x10008EC0 # 24:  Previous position
+    .word 0          # 28:  Bricks hit
 
 GAME_STATUS:
     .word 2             # 0:    Number of lives - 1
@@ -59,7 +66,9 @@ GAME_STATUS:
     .word 16            # 8:    Ball Game Start x
     .word 29            # 12:   Ball Game Start y
     .word 0x10008F38    # 16:   Paddle Game Start
-    .word 15             # 20:   Bricks Left
+    .word 30            # 20:   Bricks Left
+    .word 1             # 24:   1 = Game on, 0 = Game pause
+    .word 1             # 28:   Current level, starting from 1. 0 is menu, and -1 is Loss.
 
 LOOP_BUFFER: # So far purpose is to slow down ball
     .word 0 # Loop counter
@@ -74,16 +83,38 @@ LOOP_BUFFER: # So far purpose is to slow down ball
 	# Run the Brick Breaker game.
 main:
     # Variable definitions and reset
-    jal reset_globals
+    jal soft_reset_globals
     lw $t1, PADDLE # temporary load
     add $s4, $t1, -4 # $s4 = PADDLE ADDRESS TO DELETE (Local variable that all functions can access)
-main_game_bricks:
+    la $t0, GAME_STATUS # Load proper level
+    lw $t1, 20($t0)
+    li $t2, 1
+    beq $t1, $t2, set_main_game_bricks_2
+set_main_game_bricks_1:
     jal reset_red_brick_row
     jal paint_brick_row
     jal reset_green_brick_row
     jal paint_brick_row
     jal reset_blue_brick_row
     jal paint_brick_row
+    jal paint_unbreakable_brick
+    j main_game_loop
+set_main_game_bricks_2:
+    jal reset_red_brick_row
+    jal paint_brick_row
+    jal reset_green_brick_row
+    jal paint_brick_row
+    jal reset_blue_brick_row
+    jal paint_brick_row
+    jal paint_unbreakable_brick
+    jal reset_red_brick_row2
+    jal paint_brick_row
+    jal reset_green_brick_row2
+    jal paint_brick_row
+    jal reset_blue_brick_row2
+    jal paint_brick_row
+    la $t0, GAME_STATUS
+    j main_game_loop
 main_game_loop:
     jal draw_screen
     jal game_loop
@@ -110,7 +141,7 @@ draw_screen:
     addi $sp, $sp, 4 
     jr $ra
     
-reset_globals:
+soft_reset_globals:
     la $t0, PADDLE 
     li $t2, 0x10008F38
     sw $t2, 0($t0)
@@ -140,6 +171,8 @@ reset_globals:
     
 reset_game:
     j main
+    
+next_level:
 
 #########
 # Helper labels/functions
@@ -174,7 +207,6 @@ game_loop:
         li $t1, 0
         sw $t1, 0($t0)
         j resume_game_loop
-        
     resume_game_loop:
         b game_loop
     
@@ -317,6 +349,12 @@ pixel_colour_check: # Takes address $a0. Sets $v1 to 0 if not bouncable, and 1 i
     beq $a3, $a2, collide_brick
     lw $a2, BLUE
     beq $a3, $a2, collide_brick
+    lw $a2, HALF_RED
+    beq $a3, $a2, collide_brick 
+    lw $a2, HALF_GREEN
+    beq $a3, $a2, collide_brick
+    lw $a2, HALF_BLUE
+    beq $a3, $a2, collide_brick
     jr $ra
 collide_paddle:
     la $a3, PADDLE
@@ -346,16 +384,21 @@ collide_wall:
 collide_brick:
     addi $sp, $sp, -4
     sw $ra, 0($sp)
+    
     find_brick_start: # Bricks are separated by BLACK space
-        addi $a0, $a0, -4
         lw $a1, 0($a0)
         lw $a2, BLACK
     beq $a1, $a2, interact_brick
+    addi $a0, $a0, -4
     b find_brick_start
     interact_brick: # Address $a0 is determined as address of start of brick. Apply brick action.
         addi $a1, $a0, 4
         sw $a1, 20($t4)
     li $v1, 1
+    
+    lw $a1, 28($t4) # Increment bricks hit
+    addi $a1, $a1, 1
+    sw $a1, 28($t4)
     
     lw $ra, 0($sp)
     addi $sp, $sp, 4
@@ -367,43 +410,71 @@ solve_brick_collisions:
     
     la $t0, BALL
     lw $t1, 20($t0)
-    beq $t1, $zero, return
-    li $a0, 0
-    li $a1, 5       # Getting rid of extra lingerer
-    lw $a2, 20($t0)
-    lw $a3, BLACK
+    beq $t1, $zero, return # Early return
+    
+    
+    
+    lw $a2, 20($t0) # Address of collision
     sw $zero, 20($t0)
-    jal paint_hline
+    lw $t9, 0($t1)  # Saving colour of brick
+    brick_weakening:
+        lw $t8, RED     # Comparison colour
+        beq $t9, $t8, weaken_red    # Check if brick is normal colour    
+        lw $t8, GREEN     # Comparison colour
+        beq $t9, $t8, weaken_green    # Check if brick is normal colour
+        lw $t8, BLUE     # Comparison colour
+        beq $t9, $t8, weaken_blue    # Check if brick is normal colour
+        
+    lw $a3, BLACK
     
-    
+    repaint_brick:
+        lw $t9, 0($a2) 
+        lw $t8, BLACK
+        beq $t9, $t8, continue_brick_collision
+        sw $a3, 0($a2)
+        addi $a2, $a2, 4
+        j repaint_brick
+continue_brick_collision:
     la $t0, GAME_STATUS # Updating bricks left
     lw $t1, 20($t0)
     beq $t1, $zero, exit
     addi $t1, $t1, -1
     sw $t1, 20($t0)
     
-    
     lw $ra, 0($sp)
     addi $sp, $sp, 4
     
-    li $t3, 10
-    beq $t1, $t3, ball_speed_up
+    la $t0, BALL # Determining speed up
+    lw $t1, 28($t0)
     li $t3, 5
-    beq $t1, $t3, ball_speed_up
-    li $t3, 0
-    beq $t1, $t3, ball_speed_up
+    beq $t1, $t3, ball_speed_up1
+    li $t3, 10
+    beq $t1, $t3, ball_speed_up2
     jr $ra
-ball_speed_up:
+ball_speed_up1:
     la $t0, LOOP_BUFFER
-    lw $t1, 4($t0)
-    addi $t1, $t1, -1
+    li $t1, 3
     sw $t1, 4($t0)
     li $t1, 0
     sw $t1, 0($t0)
-    
     jr $ra
+ball_speed_up2:
+    la $t0, LOOP_BUFFER
+    li $t1, 2
+    sw $t1, 4($t0)
+    li $t1, 0
+    sw $t1, 0($t0)
+    jr $ra
+weaken_red:
+    lw $a3, HALF_RED
+    j repaint_brick
+weaken_green:
+    lw $a3, HALF_GREEN
+    j repaint_brick
+weaken_blue:
+    lw $a3, HALF_BLUE
+    j repaint_brick
 
-    
 ball_lost_case:
     la $t0, GAME_STATUS
     la $t2, BALL
@@ -411,10 +482,12 @@ ball_lost_case:
     beq $t1, $zero, exit # GAME_OVER
     addi $t1, $t1, -1 # Decrement lives
     sw $t1, 0($t0)
+    sw $zero, 28($t0) # Reset bricks hit
+    
     jal reset_paddle
     lw $a3, BLACK
     jal paint_paddle
-    jal reset_globals
+    jal soft_reset_globals
     j main_game_loop
     
 keyboard_input:
@@ -426,6 +499,7 @@ keyboard_input:
     beq $a0, 0x64, respond_to_d    # Check if the key d was pressed (move paddle right)
     beq $a0, 0x71, respond_to_q    # Check if the key q was pressed (exit game)
     beq $a0, 0x72, respond_to_r    # Check if the key r was pressed (restart game)
+    
     # li $v0, 1                    # ask system to print $a0
     # syscall
     
@@ -508,8 +582,8 @@ reset_red_brick_row:
     li $a1, 5 # set end counter
     lw $a3, RED # set color
     lw $t0, ADDR_DSPL
-    addi $t0, $t0, 0x180 # 3 Rows down
-    addi $t0, $t0, 16     # 4 Pixels right
+    addi $t0, $t0, 0x180 
+    addi $t0, $t0, 16 
     move $a2, $t0
     
     jr $ra
@@ -519,8 +593,8 @@ reset_green_brick_row:
     li $a1, 5 # set end counter
     lw $a3, GREEN # set color
     lw $t0, ADDR_DSPL
-    addi $t0, $t0, 0x280 # 3 Rows down
-    addi $t0, $t0, 16     # 4 Pixels right
+    addi $t0, $t0, 0x280 
+    addi $t0, $t0, 16     
     move $a2, $t0
     
     jr $ra
@@ -530,11 +604,63 @@ reset_blue_brick_row:
     li $a1, 5 # set end counter
     lw $a3, BLUE # set color
     lw $t0, ADDR_DSPL
-    addi $t0, $t0, 0x380 # 3 Rows down
-    addi $t0, $t0, 16     # 4 Pixels right
+    addi $t0, $t0, 0x380 
+    addi $t0, $t0, 16     
     move $a2, $t0
     
     jr $ra
+    
+reset_red_brick_row2:
+    li $a0, 0 # set counter for drawing bricks
+    li $a1, 5 # set end counter
+    lw $a3, RED # set color
+    lw $t0, ADDR_DSPL
+    addi $t0, $t0, 0x480 
+    addi $t0, $t0, 16    
+    move $a2, $t0
+    
+    jr $ra
+    
+reset_green_brick_row2:
+    li $a0, 0 # set counter for drawing bricks
+    li $a1, 5 # set end counter
+    lw $a3, GREEN # set color
+    lw $t0, ADDR_DSPL
+    addi $t0, $t0, 0x580 
+    addi $t0, $t0, 16    
+    move $a2, $t0
+    
+    jr $ra
+    
+reset_blue_brick_row2:
+    li $a0, 0 # set counter for drawing bricks
+    li $a1, 5 # set end counter
+    lw $a3, BLUE # set color
+    lw $t0, ADDR_DSPL
+    addi $t0, $t0, 0x680 
+    addi $t0, $t0, 16     
+    move $a2, $t0
+    
+    jr $ra
+    
+    
+paint_unbreakable_brick:
+    addi $sp, $sp, -4
+    sw $ra, 0($sp)
+    
+    li $a0, 14
+    li $a1, 14
+    jal coords_to_address
+    add $a2, $v0, $zero
+    li $a0, 0
+    li $a1, 4
+    lw $a3, GRAY
+    jal paint_hline
+    
+    lw $ra, 0($sp)
+    addi $sp, $sp, 4
+    jr $ra
+    
     
 paint_hline: # Paints horizontal line with $a1 pixels at $a2 with colour $a3
     add $t5, $a0, $zero # counter
